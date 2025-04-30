@@ -16,14 +16,23 @@ import java.awt.event.ActionEvent;
 import java.awt.Color;
 import java.awt.Dimension;
 import javax.swing.SwingConstants;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 
 public class FrmLogin extends JFrame {
 
     private JPanel contentPane;
     private JTextField txtUsuario;
     private JPasswordField txtContrasena;
-    
-        private static final long serialVersionUID = 1L;
+
+    private static final long serialVersionUID = 1L;
+    private static final String DB_URL = "jdbc:mysql://localhost:3306/prueba"; // ¡Asegúrate de que sea tu DB!
+    private static final String DB_USER = "root"; // ¡Asegúrate de que sea tu usuario!
+    private static final String DB_PASSWORD = "1234"; // ¡Asegúrate de que sea tu contraseña!
+
     /**
      * Launch the application.
      */
@@ -87,11 +96,47 @@ public class FrmLogin extends JFrame {
         btnIngresar.setBounds(140, 170, 120, 30);
         btnIngresar.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                // Simulación de acceso concedido (sin validación de base de datos)
-                JOptionPane.showMessageDialog(null, "Acceso concedido.");
-                FrmMenuPrincipal menu = new FrmMenuPrincipal();
-                menu.frame.setVisible(true); // Acceder al frame público y hacerlo visible
-                FrmLogin.this.dispose(); // Cierra el formulario de login
+                String usuario = txtUsuario.getText();
+                String contrasena = new String(txtContrasena.getPassword());
+
+                Connection conn = null;
+                PreparedStatement pstmt = null;
+                ResultSet rs = null;
+
+                try {
+                    Class.forName("com.mysql.cj.jdbc.Driver");
+                    conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+
+                    String sql = "SELECT * FROM usuarios WHERE usuario = ?";
+                    pstmt = conn.prepareStatement(sql);
+                    pstmt.setString(1, usuario);
+                    rs = pstmt.executeQuery();
+
+                    if (rs.next()) {
+                        String storedPassword = rs.getString("contrasena");
+                        if (contrasena.equals(storedPassword)) {
+                            JOptionPane.showMessageDialog(null, "Acceso concedido.");
+                            FrmMenuPrincipal menu = new FrmMenuPrincipal();
+                            menu.frame.setVisible(true);
+                            FrmLogin.this.dispose();
+                        } else {
+                            JOptionPane.showMessageDialog(null, "Contraseña incorrecta.", "Error de inicio de sesión", JOptionPane.ERROR_MESSAGE);
+                        }
+                    } else {
+                        JOptionPane.showMessageDialog(null, "Usuario no encontrado.", "Error de inicio de sesión", JOptionPane.ERROR_MESSAGE);
+                    }
+
+                } catch (SQLException ex) {
+                    ex.printStackTrace();
+                    JOptionPane.showMessageDialog(null, "Error de base de datos: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                } catch (ClassNotFoundException ex) {
+                    ex.printStackTrace();
+                    JOptionPane.showMessageDialog(null, "Driver de base de datos no encontrado.", "Error", JOptionPane.ERROR_MESSAGE);
+                } finally {
+                    try { if (rs != null) rs.close(); } catch (SQLException ex) {}
+                    try { if (pstmt != null) pstmt.close(); } catch (SQLException ex) {}
+                    try { if (conn != null) conn.close(); } catch (SQLException ex) {}
+                }
             }
         });
         contentPane.add(btnIngresar);
