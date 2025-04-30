@@ -1,4 +1,3 @@
-// FrmProductos.java
 package gui;
 
 import java.awt.EventQueue;
@@ -20,6 +19,11 @@ import java.awt.event.ActionEvent;
 import java.util.List;
 import java.util.ArrayList;
 import javax.swing.DefaultComboBoxModel;
+import javax.swing.JOptionPane;
+
+// Importar la clase Consultas
+import gui.Consultas;
+
 
 public class FrmProductos extends JFrame {
 
@@ -30,16 +34,27 @@ public class FrmProductos extends JFrame {
     private JTable tablaProductos;
     private DefaultTableModel modeloTabla;
     private JComboBox<String> cmbCategoria;
-    private List<Object[]> listaProductos = new ArrayList<>(); // Inicializar la lista
+    private JButton btnRegistrar;
+    private JButton btnConsultarProductos;
+
+    // Ya no necesitamos esta lista para pasarla a Consultas
+    // private List<Object[]> listaProductos = new ArrayList<>();
+
+    private String usuarioRol;
+
     private static final long serialVersionUID = 1L;
-    /**
-     * Launch the application.
-     */
+
+    // TODO: Agregar constantes de conexión a BD si registrarProducto() las necesita
+    // private static final String DB_URL = "jdbc:mysql://localhost:3306/prueba";
+    // private static final String DB_USER = "root";
+    // private static final String DB_PASSWORD = "1234";
+
+
     public static void main(String[] args) {
         EventQueue.invokeLater(new Runnable() {
             public void run() {
                 try {
-                    FrmProductos frame = new FrmProductos();
+                    FrmProductos frame = new FrmProductos("Administrador");
                     frame.setVisible(true);
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -48,10 +63,9 @@ public class FrmProductos extends JFrame {
         });
     }
 
-    /**
-     * Create the frame.
-     */
-    public FrmProductos() {
+    public FrmProductos(String userRole) {
+        this.usuarioRol = userRole;
+
         setTitle("Gestión de Productos");
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setBounds(100, 100, 750, 550);
@@ -115,21 +129,10 @@ public class FrmProductos extends JFrame {
         contentPane.add(txtCantidad);
         txtCantidad.setColumns(10);
 
-        JButton btnRegistrar = new JButton("Registrar");
+        btnRegistrar = new JButton("Registrar");
         btnRegistrar.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                String nombre = txtNombreProducto.getText();
-                String categoria = (String) cmbCategoria.getSelectedItem();
-                String precioStr = txtPrecio.getText();
-                String cantidadStr = txtCantidad.getText();
-
-                modeloTabla.addRow(new Object[]{nombre, categoria, precioStr, cantidadStr});
-                listaProductos.add(new Object[]{nombre, categoria, precioStr, cantidadStr});
-
-                // Limpiar campos después de registrar
-                txtNombreProducto.setText("");
-                txtPrecio.setText("");
-                txtCantidad.setText("");
+                registrarProducto();
             }
         });
         btnRegistrar.setBackground(new Color(144, 238, 144));
@@ -137,12 +140,21 @@ public class FrmProductos extends JFrame {
         btnRegistrar.setBounds(190, 240, 120, 30);
         contentPane.add(btnRegistrar);
 
-        JButton btnConsultarProductos = new JButton("Consultar Productos");
+        btnConsultarProductos = new JButton("Consultar Productos");
         btnConsultarProductos.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                Consultas consultasForm = new Consultas(listaProductos); // Pasa la lista
-                consultasForm.frame.setVisible(true);
-                FrmProductos.this.dispose(); // Cierra FrmProductos
+                try {
+                    // Crear y mostrar el formulario Consultas, pasando el rol
+                    // Consultas ahora cargará los datos directamente de la BD
+                    Consultas consultasForm = new Consultas(usuarioRol);
+                    consultasForm.frame.setVisible(true);
+                    // Opcional: Ocultar o cerrar FrmProductos si no quieres tener ambas abiertas
+                    // FrmProductos.this.setVisible(false);
+                    // FrmProductos.this.dispose();
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                     JOptionPane.showMessageDialog(FrmProductos.this, "Error al abrir la ventana de Consultas: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                }
             }
         });
         btnConsultarProductos.setFont(new Font("Segoe UI", Font.BOLD, 14));
@@ -161,8 +173,89 @@ public class FrmProductos extends JFrame {
             new String[] {
                 "Nombre", "Categoría", "Precio", "Cantidad"
             }
-        );
+        ) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
         tablaProductos.setModel(modeloTabla);
         scrollPane.setViewportView(tablaProductos);
+
+        configureButtonsByRole();
+
+        // TODO: Implementar la carga de productos existentes desde base de datos para esta tabla si se desea mostrar
+        // cargarProductosEnTablaFrmProductos(); // Llamar a esto si se quiere mostrar la lista aquí también
+
     }
+
+    private void configureButtonsByRole() {
+        if (this.usuarioRol == null || !this.usuarioRol.equals("Administrador")) {
+            btnRegistrar.setVisible(false);
+            // Mantener los campos de entrada editables/habilitados para usuarios regulares
+            txtNombreProducto.setEditable(true);
+            cmbCategoria.setEnabled(true);
+            txtPrecio.setEditable(true);
+            txtCantidad.setEditable(true);
+
+            // El botón Consultar Productos permanece visible para todos los roles
+
+        }
+    }
+
+    private void registrarProducto() {
+         if (this.usuarioRol == null || !this.usuarioRol.equals("Administrador")) {
+              JOptionPane.showMessageDialog(this, "Solo los administradores pueden registrar productos.", "Acceso Denegado", JOptionPane.WARNING_MESSAGE);
+              return;
+         }
+
+         String nombre = txtNombreProducto.getText().trim();
+         String categoria = (String) cmbCategoria.getSelectedItem();
+         String precioStr = txtPrecio.getText().trim();
+         String cantidadStr = txtCantidad.getText().trim();
+
+         if (nombre.isEmpty() || precioStr.isEmpty() || cantidadStr.isEmpty()) {
+             JOptionPane.showMessageDialog(this, "Por favor, complete todos los campos.", "Advertencia", JOptionPane.WARNING_MESSAGE);
+             return;
+         }
+
+         try {
+             double precio = Double.parseDouble(precioStr);
+             int cantidad = Integer.parseInt(cantidadStr);
+
+             // TODO: Implementar el guardado en la base de datos aquí
+             // Esto implicaría pasos similares a los de FrmClientes:
+             // 1. Obtener conexión a la base de datos
+             // 2. Preparar la sentencia INSERT
+             // 3. Establecer parámetros
+             // 4. Ejecutar la actualización
+             // 5. Manejar éxito/fracaso y cerrar recursos
+
+             // --- Lógica temporal en memoria (Eliminar o adaptar si se usa BD) ---
+             // Si se guarda en BD, la tabla en FrmProductos debería recargarse desde BD
+             // o actualizarse individualmente si se desea mostrar aquí también.
+             // Por ahora, solo agregamos a la tabla local para visualización inmediata
+             modeloTabla.addRow(new Object[]{nombre, categoria, precio, cantidad});
+             // la listaProductos en memoria ya no se usa para pasar a Consultas
+             // listaProductos.add(new Object[]{nombre, categoria, precio, cantidad});
+             // ---------------------------------------------------------------------
+
+
+             JOptionPane.showMessageDialog(this, "Producto registrado correctamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+
+             txtNombreProducto.setText("");
+             txtPrecio.setText("");
+             txtCantidad.setText("");
+             cmbCategoria.setSelectedIndex(0);
+
+         } catch (NumberFormatException ex) {
+             JOptionPane.showMessageDialog(this, "Precio y Cantidad deben ser números válidos.", "Error de Formato", JOptionPane.ERROR_MESSAGE);
+         }
+    }
+
+    // TODO: Implementar métodos para cargar, buscar, actualizar, eliminar productos de la base de datos
+    // private void cargarProductosEnTablaFrmProductos() { ... } // Para mostrar en esta tabla
+    // private void buscarProductoEnFrmProductos() { ... } // Si se añade búsqueda aquí
+    // private void actualizarProductoEnBD() { ... }
+    // private void eliminarProductoDeBD() { ... }
 }

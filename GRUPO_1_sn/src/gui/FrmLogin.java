@@ -29,19 +29,16 @@ public class FrmLogin extends JFrame {
     private JPasswordField txtContrasena;
 
     private static final long serialVersionUID = 1L;
-    private static final String DB_URL = "jdbc:mysql://localhost:3306/prueba"; // ¡Asegúrate de que sea tu DB!
-    private static final String DB_USER = "root"; // ¡Asegúrate de que sea tu usuario!
-    private static final String DB_PASSWORD = "1234"; // ¡Asegúrate de que sea tu contraseña!
+    private static final String DB_URL = "jdbc:mysql://localhost:3306/prueba";
+    private static final String DB_USER = "root";
+    private static final String DB_PASSWORD = "1234";
 
-    /**
-     * Launch the application.
-     */
     public static void main(String[] args) {
         EventQueue.invokeLater(new Runnable() {
             public void run() {
                 try {
                     FrmLogin frame = new FrmLogin();
-                    frame.setVisible(true); // El login se muestra primero
+                    frame.setVisible(true);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -49,16 +46,13 @@ public class FrmLogin extends JFrame {
         });
     }
 
-    /**
-     * Create the frame.
-     */
     public FrmLogin() {
         setTitle("Inicio de Sesión");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setPreferredSize(new Dimension(400, 300)); // Tamaño preferido
+        setPreferredSize(new Dimension(400, 300));
         setMinimumSize(new Dimension(400, 300));
         setMaximumSize(new Dimension(400, 300));
-        setLocationRelativeTo(null); // Centrar en pantalla
+        setLocationRelativeTo(null);
         contentPane = new JPanel();
         contentPane.setBackground(new Color(240, 248, 255));
         contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
@@ -114,10 +108,20 @@ public class FrmLogin extends JFrame {
 
                     if (rs.next()) {
                         String storedPassword = rs.getString("contrasena");
+                        String rol = rs.getString("rol");
+
                         if (contrasena.equals(storedPassword)) {
-                            JOptionPane.showMessageDialog(null, "Acceso concedido.");
-                            FrmMenuPrincipal menu = new FrmMenuPrincipal();
-                            menu.frame.setVisible(true);
+                            JOptionPane.showMessageDialog(null, "Acceso concedido como " + rol + ".");
+                            if (rol.equals("Administrador")) {
+                                FrmMenuAdministrador menuAdmin = new FrmMenuAdministrador(usuario);
+                                menuAdmin.frame.setVisible(true);
+                            } else if (rol.equals("Invitado")) {
+                                FrmMenuInvitado menuInvitado = new FrmMenuInvitado();
+                                menuInvitado.frame.setVisible(true);
+                            } else { // Asumimos que cualquier otro rol es "Regular"
+                                FrmMenuPrincipal menuPrincipal = new FrmMenuPrincipal();
+                                menuPrincipal.frame.setVisible(true);
+                            }
                             FrmLogin.this.dispose();
                         } else {
                             JOptionPane.showMessageDialog(null, "Contraseña incorrecta.", "Error de inicio de sesión", JOptionPane.ERROR_MESSAGE);
@@ -148,7 +152,7 @@ public class FrmLogin extends JFrame {
             public void actionPerformed(ActionEvent e) {
                 FrmRegistrarUsuario registrarForm = new FrmRegistrarUsuario();
                 registrarForm.setVisible(true);
-                FrmLogin.this.dispose(); // Cierra el login al ir a registrarse (opcional)
+                FrmLogin.this.dispose();
             }
         });
         contentPane.add(btnRegistrarse);
